@@ -1,0 +1,73 @@
+def main():
+    # Register the Aeropex Potion effect
+    def aeropex_effect_impl_tick():
+        return [
+            modifier_creator_player_speed(20),
+            modifier_creator_player_jump(20),
+            modifier_creator_resistance(-10)
+        ]
+    register_effect("aeropex_potion_effect", "Aeropex Potion", "Grants increased movement speed and jumping height, but makes the player vulnerable to falls.", aeropex_effect_impl_tick)
+
+    # Define the on_use function for Aeropex Potion
+    def use_aeropex_potion():
+        give_effect_player("aeropex_potion_effect", 600)
+
+    # Create the Aeropex Potion item
+    aeropex_potion = create_item(
+        name="Aeropex Potion",
+        description="A potion that grants increased movement speed and jumping height but makes the player vulnerable to falls.",
+        minecraft_item="minecraft:potion",
+        on_use_impl=use_aeropex_potion,
+        on_tick_impl=None
+    )
+
+    # Define the on_use function for Molten Quill
+    def use_molten_quill():
+        set_on_fire()
+
+    # Create the Molten Quill item
+    molten_quill = create_item(
+        name="Molten Quill",
+        description="A feather-like item that sets the user's hands on fire for 5 seconds.",
+        minecraft_item="minecraft:feather",
+        on_use_impl=use_molten_quill,
+        on_tick_impl=None
+    )
+
+    # Give the items to the player
+    give_item_player(aeropex_potion, 1)
+    give_item_player(molten_quill, 1)
+
+    # Display the cryptic message
+    on_screen_message("The winds of progress are swift.")
+
+
+    //
+
+def main():
+    # Display the cryptic message
+    on_screen_message("The heart's sacrifice to celestial balance")
+
+    # Register the effect for the ritual
+    register_effect("TimeAccelerationEffect", "Time Acceleration", "Increases movement and crafting speed, but increases hunger.",
+                    [modifier_creator_player_speed(20), modifier_creator_player_mining_speed(50), modifier_creator_player_saturation(50)])
+
+    # Apply the effect to the player for a duration (assuming 10 minutes)
+    give_effect_player("TimeAccelerationEffect", 600)
+
+    # Create the Chrono Focus item
+    def on_use_impl():
+        give_effect_player("TimeAccelerationEffect", 1800)
+
+    chrono_focus = create_item("Chrono Focus", "Enhances clockwork perception for 30 minutes", "minecraft:emerald", on_use_impl, None)
+
+    # Give the item to the player
+    give_item_player(chrono_focus, 1)
+
+    # Add 10 to the player's satiation (hunger)
+    add_satiation_player(10)
+
+
+
+
+

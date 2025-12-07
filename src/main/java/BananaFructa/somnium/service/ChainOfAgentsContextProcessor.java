@@ -1,0 +1,124 @@
+package BananaFructa.somnium.service;
+
+import BananaFructa.somnium.ActionTrigger;
+import BananaFructa.somnium.Config;
+import BananaFructa.somnium.EventHandler;
+import BananaFructa.somnium.Somnium;
+import BananaFructa.somnium.gamelinking.GameLinkingHandler;
+import BananaFructa.somnium.packets.PacketRegistry;
+import BananaFructa.somnium.packets.S2CRequestRenderData;
+import BananaFructa.somnium.packets.S2CShowMessage;
+import BananaFructa.somnium.pyinterpreter.JavaPythonShadower;
+import net.minecraft.server.level.ServerPlayer;
+
+import java.util.UUID;
+
+public class ChainOfAgentsContextProcessor {
+
+    public OllamaServiceHandler ollamaService;
+
+    public long disc;
+    public String contextGeneratorSession;
+
+    public boolean firstAction = true;
+
+    public ChainOfAgentsContextProcessor(long discriminator, OllamaServiceHandler ollamaService) {
+        this.disc = discriminator;
+        this.ollamaService = ollamaService;
+        contextGeneratorSession = "ctx_gen_" + discriminator;
+        //filterSession = "filter_" + discriminator;
+    }
+
+    // TODO: this is not good needs to be changed
+    private String lastHeader;
+
+    public boolean actionTrigger(ServerPlayer player, ActionTrigger trigger) {
+        lastHeader = /*"Trigger: " + trigger.description + "\n" +*/ // maybe later
+                parseDescription(player.getUUID());
+        requestRenderData(player);
+        return true;
+    }
+
+    public void renderDataArrived(ServerPlayer player, byte[] image) {
+        if (ollamaService.isDown()) {
+            return;
+        }
+
+        OllamaTask task = new OllamaTask("Player Action Interact") {
+            @Override
+            public void run() {
+                nextStage();
+                String responseDesc = ollamaService.prompt(Config.ollamaDescriptorModel,null,Config.descriptorPrimer, image,Config.descriptorContextWindow,false);
+                Somnium.LOGGER.info("[CoA | Descriptor]: {}", responseDesc);
+                nextStage();
+                String responseFilter = ollamaService.prompt(Config.ollamaFilterModel,null,Config.filterPriming + "\n" + responseDesc,null,Config.filterContextWindow,false);
+                Somnium.LOGGER.info("[CoA | Filter]: {}", responseFilter);
+                if (responseFilter.contains("Yes")) {
+                    Somnium.LOGGER.info("[CoA | System]: Valid setup, proceeding to context update!");
+
+                    String contextPrompt = lastHeader + "\n" + "Surroundings:" + responseDesc;
+                    if (firstAction) {
+                        firstAction = false;
+                        contextPrompt = Config.contextGeneratorPriming + "\n" + contextPrompt;
+                    }
+                    Somnium.LOGGER.info("[CoA | Context Prompt] : {}", contextPrompt);
+                    nextStage();
+                    String contextResponse = ollamaService.prompt(Config.ollamaContextGeneratorModel, contextGeneratorSession, contextPrompt, null, Config.contextGeneratorContextWindow,false);
+                    Somnium.LOGGER.info("[CoA | Context Generator]: {}", contextResponse);
+                    nextStage();
+                    String code = generateCode(contextResponse);
+                    Somnium.LOGGER.info("[CoA | Generated Code]: {}",code);
+                    player.getServer().execute(()->{
+                        GameLinkingHandler.runPythonCode(GameLinkingHandler.globalStorageKey,null, "main",code,player);
+                        EventHandler.playActionSounds(player);
+                    });
+                } else {
+                    PacketRegistry.toPlayer(new S2CShowMessage("Nothing happened"),player);
+                }
+            }
+
+            @Override
+            public String[] stages() {
+                return new String[]{"Processing Environment Data","Environment Filtering","Context Generation","Code Generation"};
+            }
+        };
+
+        TaskScheduler.schedule(task);
+    }
+
+    public String generateCode(String prompt) {
+        String finalPrompt = Config.coderTopPriming + "\n\n" + prompt + "\n" + GameLinkingHandler.getAPIPromptDescription() + "\n" + Config.coderBottomPriming;
+        String response = ollamaService.prompt(Config.ollamaCoderModel, null, finalPrompt, null, Config.coderContextWindow, true);
+        String code = "";
+        boolean started = false;
+        boolean ended = false;
+        for (String l : response.split("\n")) {
+            if (started) {
+                if (l.startsWith("```")) {
+                    ended = true;
+                    break;
+                } else code += l + "\n";
+            }
+            if (l.startsWith("```python")) started = true;
+
+        }
+        if (started && ended) return code;
+        return null;
+    }
+
+    public static String parseDescription(UUID player) {
+        String burned = EventHandler.getItemsBurnedFor(player);
+        if (burned == null) return "Items burned: None";
+        else return "Items burned: " + burned;
+    }
+
+    private static void async(Runnable async) {
+        Thread t = new Thread(async::run);
+        t.start();
+    }
+
+    public void requestRenderData(ServerPlayer player) {
+        PacketRegistry.toPlayer(new S2CRequestRenderData(disc),player);
+    }
+
+}

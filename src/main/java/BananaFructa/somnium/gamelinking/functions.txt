@@ -1,0 +1,178 @@
+Utilities =====================================================================
+
+# Return a random float between 0 and 1
+random()
+
+# Return float world time in seconds, starts from when the world is first created
+world_time()
+
+================================================================================
+Player State ===================================================================
+
+# Return the player velocity, 1 is walking, 2 is sprinting, independent of actual speed factor
+get_player_current_velocity()
+
+# @return Returns the player health (between 0 and 20)
+get_player_health()
+
+# @return Returns the player satiation (between 0 and 20)
+get_player_hunger()
+
+================================================================================
+Player Interaction =============================================================
+
+# @param = amount Absolute amount to damage the player. A player has 20 health.
+damage_player(amount)
+
+# @param amount = Absolute amount to change player health. Positive values heal , negative values damage, A player has 20 health.
+add_health_player(amount)
+
+# @param = Absolute amount to add to player satiation. Positive values increase satiation, negative values make the player hungry A player has 20 points.
+add_satiation_player(amount)
+
+# @param amount = Absolute amount to damage the entities. A player has 20 health.
+# @param radius = Radius in blocks
+damage_entities_around_player(amount,radius)
+
+# @param amount = Absolute amount to heal the entities. A player has 20 health.
+# @param radius = Radius in blocks
+heal_entities_around_player(amount,radius)
+
+# @return Returns the number of specific blocks around the player
+# @param block_name = Name of the block
+# @param radius = Radius around the player in which to search
+get_block_nearby(block_name,radius)
+
+# @brief Breaks specific blocks around the player
+# @param block_name = Name of the block
+# @param radius = Radius around the player in which to search
+break_block_nearby(block_name,radius)
+
+# @brief Reveals to the player facts about the internal magic system
+give_magical_insight()
+
+# @brief Randomly teleports the player
+random_teleport_player()
+
+# @brief displays an on-screen message to the player usually reserved for cryptic message after each ritual
+# @param message = String containing the message
+on_screen_message(message)
+
+# @brief deletes a random item from the player inventory
+delete_random_item()
+
+# @brief give a random item to the player
+give_random_item()
+
+# @brief Retrieved to the player written information around their environment
+transcribe_information()
+
+# @brief sets the block the player looks at on fire
+set_on_fire()
+
+================================================================================
+Items & Potions ================================================================
+
+# @param item = Item object that needs to be given to the player, use create_item(...)
+# @param quantity = Amount of the item to give
+give_item_player(item,quantity)
+
+# @brief Creates an item
+# @param name = Name of the potion
+# @param desc = Description of the potion effect
+# @param on_use_impl = Function which implements the effects of using the item (right click), cannot be a string
+# @param on_tick_impl = Function that runs every tick, every 0.05 seconds, cannot be a string
+# @param minecraft_item = The name of the minecraft items that should be displayed as the item icon, the string can be in free natural form
+# @returns Returns an item object
+create_item(name,description,minecraft_item,on_use_impl,on_tick_impl)
+
+# @brief Adds uses to item
+# @param item = Item object
+# @param use_count = Number of uses
+add_uses_to_item(item,use_count)
+
+# @brieg Adds damage to item
+# @param item = Item object
+# @param damage = Amount of damage
+add_damage_to_item(item,damage)
+
+# @param effect = Effect object to give to the player, use create_effect(...)
+# @param duration = Duration in seconds (floating point number)
+give_effect_player(effect,duration)
+
+# @brief Gives the player an effect.
+# @param name = Display name that the player sees attached to the effect
+# @param desc = Description of the effect
+# @param modifier_list = List of effect modifiers
+# @param effect_impl_tick = Effect implementation, runs every tick
+# @return Returns the effect object
+create_effect(name,description,modifier_list,effect_impl_tick)
+
+# @param amount_per_second = Absolute amount of health change. Positives heal, negatives damage. A player has 20 health.
+# @return Returns a modifier object that can be applied to an effect
+modifier_creator_player_health(amount_per_second)
+
+# @param amount_per_second = Absolute amount of satiation change. Positives satiate, negatives hunger. A player has 20 hunger points.
+# @return Returns a modifier object that can be applied to an effect
+modifier_creator_player_saturation(amount_per_second)
+
+# @param percent = Percentage by which player speed is modified. >0 increases the speed <0 lowers it.
+# @return Returns a modifier object that can be applied to an effect
+modifier_creator_player_speed(percent)
+
+# @param percent = Percentage by which the player is protected from damage. >0 increases protection <0 makes the player more vulnerable
+# @return Returns a modifier object that can be applied to an effect
+modifier_creator_resistance(percent)
+
+# @param factor = Percentage by which the player is protected from fire damage. >0 increases protection <0 makes the player more vulnerable
+# @return Returns a modifier object that can be applied to an effect
+modifier_creator_fire_resistance(percent)
+
+# @param factor = Percentage by which the player jump height is changed. >0 increases jump <0 decreases jump
+# @return Returns a modifier object that can be applied to an effect
+modifier_creator_player_jump(percent)
+
+# @param factor = Percentage by which the player mine speed is changed. >0 increases mine <0 decreases mine
+# @return Returns a modifier object that can be applied to an effect
+modifier_creator_player_mining_speed(percent)
+
+# @return Returns a modifier object that can be applied to an effect
+modifier_creator_blind_player()
+
+# @return Returns a modifier object that can be applied to an effect
+modifier_creator_vision_player()
+
+# @return Returns a modifier object that can be applied to an effect
+modifier_creator_invisible_player()
+
+# @brief Allows the player to pass through solid blocks
+# @return Returns a modifier object that can be applied to an effect
+modifier_creator_block_phasing()
+
+# @brief Disrupts redstone circuitry around player
+# @return Returns a modifier object that can be applied to an effect
+modifier_creator_disrupt_redstone()
+
+# @brief Allows the player to see valuables
+# @return Returns a modifier object that can be applied to an effect
+modifier_creator_show_valuables()
+
+# @brief Allows the player to see dangers
+# @return Returns a modifier object that can be applied to an effect
+modifier_creator_reveal_dangers()
+
+# @brief Allows the player to see through blocks
+# @return Returns a modifier object that can be applied to an effect
+modifier_creator_see_through_blocks()
+
+================================================================================
+World ==========================================================================
+
+# @brief Spawns particles around the player
+# @param count = Number of particles to spawn around the player
+# @param color = Color in RGB format (e.g. 0xff0000 - red)
+# @param lifetime = Lifetime in seconds
+spawn_particle(count,color,lifetime)
+
+================================================================================
+
