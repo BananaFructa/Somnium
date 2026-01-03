@@ -1,10 +1,16 @@
 package BananaFructa.somnium.mechanics.effects;
 
 import BananaFructa.somnium.gamelinking.GameLinkingHandler;
+import BananaFructa.somnium.gamelinking.objects.PotionModifiersType;
 import BananaFructa.somnium.gamelinking.objects.Python_EffectModifier;
+import BananaFructa.somnium.packets.PacketRegistry;
+import BananaFructa.somnium.packets.S2CEffectUpdate;
 import BananaFructa.somnium.pyinterpreter.objects.Python_List;
 import BananaFructa.somnium.pyinterpreter.objects.Python_Object;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Tuple;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.Entity;
@@ -17,6 +23,7 @@ import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -53,6 +60,8 @@ public class ProgrammableEffect extends MobEffect {
     }
 
     float partialSaturation = 0;
+
+    public static HashMap<UUID, Tuple<Long,String>> effectSateCache = new HashMap<>();
 
     @Override
     public void applyEffectTick(LivingEntity entity, int p_19468_) {
@@ -96,6 +105,47 @@ public class ProgrammableEffect extends MobEffect {
                     }
                 }
             }
+
+            if (entity instanceof ServerPlayer) {
+                CompoundTag state = writeClientNBT();
+                String stateString = state.toString();
+                ServerPlayer player = (ServerPlayer) entity;
+                if (!effectSateCache.containsKey(player.getUUID())) {
+                    effectSateCache.put(player.getUUID(),new Tuple<>(player.level().getGameTime(),stateString));
+                    PacketRegistry.toPlayer(new S2CEffectUpdate(state),player);
+                } else {
+                    Tuple<Long,String> last = effectSateCache.get(player.getUUID());
+                    long lastTime = last.getA();
+                    String lastNbt = last.getB();
+                    // 5 seconds timout
+                    if (player.level().getGameTime() - lastTime > 100 || !lastNbt.equals(stateString)) {
+                        PacketRegistry.toPlayer(new S2CEffectUpdate(state),player);
+                        effectSateCache.put(player.getUUID(),new Tuple<>(player.level().getGameTime(),state.toString()));
+                    }
+                }
+            }
+        }
+    }
+
+    public CompoundTag writeClientNBT() {
+        CompoundTag tag = new CompoundTag();
+        tag.putInt("id",id);
+        tag.putString("name",displayName);
+        tag.putInt("modifier_count",effectModifiers.size());
+        for (int i = 0;i < effectModifiers.size();i++) {
+            tag.putInt("modifier_"+i,effectModifiers.get(i).type.ordinal());
+            tag.putFloat("modifier_value_"+i,effectModifiers.get(i).value);
+        }
+        return tag;
+    }
+
+    public void readClientNBT(CompoundTag tag) {
+        displayName = tag.getString("name");
+        int mCount = tag.getInt("modifier_count");
+        for (int i = 0;i < mCount;i++) {
+            PotionModifiersType type = PotionModifiersType.values()[tag.getInt("modifier_"+i)];
+            float value = tag.getFloat("modifier_value_"+i);
+            effectModifiers.add(new Python_EffectModifier(type,value));
         }
     }
 

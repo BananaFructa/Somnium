@@ -15,7 +15,8 @@
     "ItemStackName",
     "LivingEntityEffectImplementations",
     "PlayerNoCollision",
-    "PotionHook"
+    "PotionHook",
+    "RedstoneDistruption"
   ],
   "client": [
     "BlindnessRenderer"

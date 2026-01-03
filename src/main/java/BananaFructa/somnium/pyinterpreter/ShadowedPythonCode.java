@@ -156,7 +156,13 @@ public class ShadowedPythonCode {
             }
             if (globalScope.hasVar(name)) globalScope.registerVar(name,type);
         } else {
-            scopeStack.peek().registerVar(name,type);
+            // So as it turns out variables defined inside the scope of a if or loop statement are attributed to the scope of the uppermost function in python
+            for (int i = scopeStack.size() - 1; i > -1;i--){
+                if (scopeStack.get(i).isFunctionScope) {
+                    scopeStack.get(i).registerVar(name,type);
+                }
+            }
+            //scopeStack.peek().registerVar(name,type);
         }
     }
 

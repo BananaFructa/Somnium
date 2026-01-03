@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 @Mod.EventBusSubscriber(modid = Somnium.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class Config {
+    private static final int defaultMinInteractionPeriod = 20*60*5;
     private static final int defaultDescriptorContextWindow = 4096;
     private static final int defaultFilterContextWindow = 4096;
     private static final int defaultContextGeneratorContextWindow = 10000;
@@ -49,6 +50,7 @@ public class Config {
     Do not forget to register effects before you use them.
     Do not forget that creating items doesn't automatically give them to the player.
     Wrap all code in a main function.
+    When forced to compromise in how a functionality is implemented update descriptions to reflected the implemented functionality.
     def main():
         # All code here""";
     private static final String defaultEmbeddingModel = "snowflake-arctic-embed:110m";
@@ -73,6 +75,7 @@ public class Config {
     private static final ForgeConfigSpec.ConfigValue<Integer> CONTEXT_WINDOW_CODER = BUILDER.comment("Context window size for the coder model").define("contextWindowCoder",defaultCoderContextWindow);
     private static final ForgeConfigSpec.ConfigValue<String> OLLAMA_EMBEDDING_MODEL = BUILDER.comment("Ollama library model used to embedd free form text").define("ollamaEmbeddingModel",defaultEmbeddingModel);
     private static final ForgeConfigSpec.ConfigValue<Integer> PYTHON_LOOP_LIMIT = BUILDER.comment("Maximum number of times a loop can run in the generated python code").define("pythonLoopLimit",defaultPythonLoopLimit);
+    private static final ForgeConfigSpec.ConfigValue<Integer> MIN_INTERACTION_PERIOD = BUILDER.comment("Minimum number of ticks before a new interaction can be performed by the player").define("minInteractionPeriod",defaultMinInteractionPeriod);
 
     static final ForgeConfigSpec SPEC = BUILDER.build();
 
@@ -93,6 +96,7 @@ public class Config {
     public static int contextGeneratorContextWindow;
     public static int coderContextWindow;
     public static int pythonLoopLimit;
+    public static int minInteractionPeriod;
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
@@ -113,5 +117,6 @@ public class Config {
         contextGeneratorContextWindow = CONTEXT_WINDOW_CONTEXT_GENERATOR.get();
         coderContextWindow = CONTEXT_WINDOW_CODER.get();
         pythonLoopLimit = PYTHON_LOOP_LIMIT.get();
+        minInteractionPeriod = MIN_INTERACTION_PERIOD.get();
     }
 }

@@ -13,13 +13,15 @@ public class LinkedFunctionInfo {
     public List<String> params;
     public Function2<ShadowedPythonCode, Python_Object[], Python_Object> function;
     public String docs;
+    public String desc;
 
-    public LinkedFunctionInfo(int order, String name, List<String> params, Function2<ShadowedPythonCode, Python_Object[], Python_Object> func, String docs) {
+    public LinkedFunctionInfo(int order, String name, List<String> params, Function2<ShadowedPythonCode, Python_Object[], Python_Object> func, String docs, String desc) {
         this.name = name;
         this.function = func;
         this.docs = docs;
         this.order = order;
         this.params = params;
+        this.desc = desc;
     }
 
 }

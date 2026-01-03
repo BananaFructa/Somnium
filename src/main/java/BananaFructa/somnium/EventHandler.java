@@ -2,12 +2,16 @@ package BananaFructa.somnium;
 
 import BananaFructa.somnium.gamelinking.GameLinkingHandler;
 import BananaFructa.somnium.gamelinking.LinkedGameDefinitions;
+import BananaFructa.somnium.gamelinking.objects.PotionModifiersType;
+import BananaFructa.somnium.mechanics.effects.EffectUtils;
+import BananaFructa.somnium.mechanics.projectiles.PulseRenderer;
 import BananaFructa.somnium.packets.PacketRegistry;
 import BananaFructa.somnium.packets.S2CUpdateScheduleData;
 import BananaFructa.somnium.service.ChainOfAgentsContextProcessor;
 import BananaFructa.somnium.service.OllamaServiceHandler;
 import BananaFructa.somnium.service.TaskScheduler;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerLevel;
@@ -15,6 +19,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
+import net.minecraft.util.Tuple;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -24,6 +29,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.PotionItem;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.DimensionDataStorage;
+import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.item.ItemTossEvent;
@@ -39,7 +45,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
-// This ended up not being used for now
 @Mod.EventBusSubscriber
 public class EventHandler {
 
@@ -58,6 +63,9 @@ public class EventHandler {
     static int connectionCheckTimer = 100;
     public static boolean serviceIsDown = false;
     public static List<String> missingModels = new ArrayList<>();
+
+    public static List<Tuple<Level,BlockPos>> redstoneDisruptors = new ArrayList<>();
+    public static int redstoneDisruptRadius = 7;
 
     @SubscribeEvent
     public static void onServerStarting(ServerStartingEvent event) {
@@ -174,6 +182,33 @@ public class EventHandler {
                 }
             }
         }
+
+        // --
+
+        // TODO: this is not efficient and can sometimes make redstone land in an unupdated state
+        // TODO: ideally the position difference for each entity should be taken and only update the disjoin areas of the two square ranges
+        for (Tuple<Level,BlockPos> bpl : redstoneDisruptors) {
+            for (int x = -redstoneDisruptRadius; x <= redstoneDisruptRadius;x++) {
+                for (int y = -redstoneDisruptRadius; y <= redstoneDisruptRadius;y++) {
+                    for (int z = -redstoneDisruptRadius; z <= redstoneDisruptRadius;z++) {
+                        BlockPos pos = bpl.getB().offset(x,y,z);
+                        bpl.getA().neighborChanged(pos,bpl.getA().getBlockState(pos).getBlock(),pos);
+                    }
+                }
+            }
+        }
+
+        redstoneDisruptors.clear();
+        for (ServerLevel level : event.getServer().getAllLevels()) {
+            for (Entity e : level.getAllEntities()) {
+                if (e instanceof LivingEntity) {
+                    LivingEntity livingEntity = (LivingEntity) e;
+                    if (!EffectUtils.hasEffect(livingEntity,PotionModifiersType.DISRUPT_REDSTONE)) continue;
+                    redstoneDisruptors.add(new Tuple<>(livingEntity.level(),livingEntity.blockPosition()));
+                }
+            }
+        }
+
     }
 
     @SubscribeEvent
@@ -212,10 +247,15 @@ public class EventHandler {
         if (items.isEmpty()) return "None";
         HashMap<String,Integer> counts = new HashMap<>();
         for (ItemStack i : items) {
-            MutableComponent comp =  Component.empty().append(i.getItem().getName(i));
-            String name = comp.getString();
-            if (counts.containsKey(name)) counts.put(name,counts.get(name) + i.getCount());
-            else counts.put(name,i.getCount());
+            String name = null;
+            if (i.hasTag() && i.getTag().contains("somnium_item")) {
+                name = i.getTag().getCompound("somnium_item").getString("name");
+            } else {
+                MutableComponent comp = Component.empty().append(i.getItem().getName(i));
+                name = comp.getString();
+            }
+            if (counts.containsKey(name)) counts.put(name, counts.get(name) + i.getCount());
+            else counts.put(name, i.getCount());
         }
         String text = "";
         boolean first = true;

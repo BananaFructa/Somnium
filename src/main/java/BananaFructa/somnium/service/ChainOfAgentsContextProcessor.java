@@ -20,8 +20,6 @@ public class ChainOfAgentsContextProcessor {
     public long disc;
     public String contextGeneratorSession;
 
-    public boolean firstAction = true;
-
     public ChainOfAgentsContextProcessor(long discriminator, OllamaServiceHandler ollamaService) {
         this.disc = discriminator;
         this.ollamaService = ollamaService;
@@ -33,6 +31,7 @@ public class ChainOfAgentsContextProcessor {
     private String lastHeader;
 
     public boolean actionTrigger(ServerPlayer player, ActionTrigger trigger) {
+        if (!Somnium.INSTANCE.worldData.canInteract(player)) return false;
         lastHeader = /*"Trigger: " + trigger.description + "\n" +*/ // maybe later
                 parseDescription(player.getUUID());
         requestRenderData(player);
@@ -57,13 +56,17 @@ public class ChainOfAgentsContextProcessor {
                     Somnium.LOGGER.info("[CoA | System]: Valid setup, proceeding to context update!");
 
                     String contextPrompt = lastHeader + "\n" + "Surroundings:" + responseDesc;
-                    if (firstAction) {
-                        firstAction = false;
-                        contextPrompt = Config.contextGeneratorPriming + "\n" + contextPrompt;
+
+                    String sessionName = contextGeneratorSession + "_" + player.getUUID().toString();
+                    sessionName = null; // TODO: Remove this before release
+
+                    if (!Somnium.INSTANCE.ollamaService.hasSession(sessionName)) {
+                        contextPrompt = Config.contextGeneratorPriming + "\n" + contextPrompt + "\nThe allowed interactions are:\n"+GameLinkingHandler.getInteractionList();
                     }
-                    Somnium.LOGGER.info("[CoA | Context Prompt] : {}", contextPrompt);
+                    Somnium.LOGGER.info("[CoA | Context Prompt | " + sessionName + "] : {}", contextPrompt);
                     nextStage();
-                    String contextResponse = ollamaService.prompt(Config.ollamaContextGeneratorModel, contextGeneratorSession, contextPrompt, null, Config.contextGeneratorContextWindow,false);
+                    String contextResponse = ollamaService.prompt(Config.ollamaContextGeneratorModel, sessionName, contextPrompt, null, Config.contextGeneratorContextWindow,false);
+                    Somnium.INSTANCE.worldData.setDirty(); // Save the session history
                     Somnium.LOGGER.info("[CoA | Context Generator]: {}", contextResponse);
                     nextStage();
                     String code = generateCode(contextResponse);

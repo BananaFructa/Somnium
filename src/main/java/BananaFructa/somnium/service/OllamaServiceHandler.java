@@ -3,6 +3,8 @@ package BananaFructa.somnium.service;
 import BananaFructa.somnium.Config;
 import BananaFructa.somnium.Somnium;
 import BananaFructa.somnium.Utils;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.ollama4j.Ollama;
 import io.github.ollama4j.exceptions.OllamaException;
 import io.github.ollama4j.models.chat.OllamaChatMessage;
@@ -13,6 +15,7 @@ import io.github.ollama4j.models.embed.OllamaEmbedRequest;
 import io.github.ollama4j.models.embed.OllamaEmbedResult;
 import io.github.ollama4j.tools.Tools;
 import io.github.ollama4j.utils.OptionsBuilder;
+import net.minecraft.nbt.CompoundTag;
 
 import java.io.File;
 import java.util.*;
@@ -25,6 +28,55 @@ public class OllamaServiceHandler {
     public final Ollama ollama;
 
     public HashMap<String, List<OllamaChatMessage>> sessionHistory = new HashMap<>();
+
+    public CompoundTag writeSession(List<OllamaChatMessage> history) throws JsonProcessingException {
+        CompoundTag tag = new CompoundTag();
+        tag.putInt("size",history.size());
+        for (int i = 0;i < history.size();i++) {
+            ObjectMapper mapper = new ObjectMapper();
+            tag.putString("message_" + i, mapper.writeValueAsString(history.get(i)));
+        }
+        return tag;
+    }
+
+    public List<OllamaChatMessage> readSession(CompoundTag tag) throws JsonProcessingException {
+        int size = tag.getInt("size");
+        List<OllamaChatMessage> history = new ArrayList<>();
+        for (int i = 0;i < size;i++) {
+            ObjectMapper mapper = new ObjectMapper();
+            history.add(mapper.readValue(tag.getString("message_" + i),OllamaChatMessage.class));
+        }
+        return history;
+    }
+
+    public CompoundTag writeNBT() {
+        CompoundTag tag = new CompoundTag();
+        tag.putInt("session_count",sessionHistory.size());
+        List<String> keySet = sessionHistory.keySet().stream().toList();
+        for (int i = 0 ;i < keySet.size();i++) {
+            try {
+                tag.putString("session_name_"+i,keySet.get(i));
+                tag.put("session_"+i,writeSession(sessionHistory.get(keySet.get(i))));
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return tag;
+    }
+
+    public void readNBT(CompoundTag tag) {
+        sessionHistory.clear();
+        int size = tag.getInt("session_count");
+        for (int i = 0;i < size;i++) {
+            String key = tag.getString("session_name_"+i);
+            try {
+                List<OllamaChatMessage> history = readSession(tag.getCompound("session_"+i));
+                sessionHistory.put(key,history);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
 
     public void loadModel(String modelName) {
         try {
@@ -105,6 +157,10 @@ public class OllamaServiceHandler {
 
     public boolean ping() throws OllamaException {
         return ollama.ping();
+    }
+
+    public boolean hasSession(String name) {
+        return sessionHistory.containsKey(name);
     }
 
     public boolean isDown() {

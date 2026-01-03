@@ -9,6 +9,7 @@ import BananaFructa.somnium.pyinterpreter.objects.Python_Object;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Tuple;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.PotionItem;
@@ -25,7 +26,7 @@ import java.util.stream.Collectors;
 @Mod.EventBusSubscriber
 public class GameLinkingHandler {
 
-    public static LivingEntity target;
+    public static Entity target;
     public static String currentCacheKey;
 
     private static List<LinkedFunctionInfo> linkedFunctions = new ArrayList<>();
@@ -39,7 +40,8 @@ public class GameLinkingHandler {
         for (Tuple<Method,PythonMethodLink> annMethod : methods) {
             Method m = annMethod.getA();
             String docs = annMethod.getB().docs();
-            int order = annMethod.getB().order();
+            String desc = annMethod.getB().desc();
+            int order = annMethod.getB().order().ordinal();
             if (m.getParameterCount() == 0) throw new RuntimeException("Python linked function needs to have a caller as the first parameter.");
             Parameter[] parameters = m.getParameters();
             if (!ShadowedPythonCode.class.isAssignableFrom(parameters[0].getType())) throw new RuntimeException("Python linked function needs to have a caller of type ShadowedPythonCode.class.");
@@ -60,7 +62,7 @@ public class GameLinkingHandler {
             for (int i = 1;i < parameters.length;i++) {
                 parameterNames.add(parameters[i].getName());
             }
-            linkedFunctions.add(new LinkedFunctionInfo(order,m.getName(),parameterNames,func,docs));
+            linkedFunctions.add(new LinkedFunctionInfo(order,m.getName(),parameterNames,func,docs,desc));
             symbolicLinks.put(m.getName(),parameterNames);
         }
     }
@@ -83,7 +85,7 @@ public class GameLinkingHandler {
      * @param code = The python code to be executed
      * @param targetEntity = Some linked functions are relative to a certain player, if your code doesn't need that set it to null. Calls that do use it are not thread safe.
      */
-    public static Python_Object runPythonCode(String storageKey, String cacheKey, String functionName, String code, LivingEntity targetEntity) {
+    public static Python_Object runPythonCode(String storageKey, String cacheKey, String functionName, String code, Entity targetEntity) {
         Python_Object ret = Python_NoneType.None;
         ShadowedPythonCode interpretedCode;
         boolean hit = false;
@@ -174,6 +176,16 @@ public class GameLinkingHandler {
             suffix += function + "\n\n";
         }
         return suffix;
+    }
+
+    public static String getInteractionList() {
+        List<LinkedFunctionInfo> sorted = linkedFunctions.stream().sorted(Comparator.comparingInt(a -> a.order)).collect(Collectors.toCollection(ArrayList::new));
+        String list = "";
+        for (LinkedFunctionInfo info : sorted) {
+            if (info.desc.equals("NONE") || info.desc.equals("TODO")) continue;
+            list += info.desc + "\n";
+        }
+        return list;
     }
 
 }

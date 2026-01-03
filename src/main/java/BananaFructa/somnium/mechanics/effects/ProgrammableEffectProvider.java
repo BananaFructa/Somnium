@@ -43,4 +43,8 @@ public class ProgrammableEffectProvider {
         return effectPool.get(effectNaming.get(effectId)).get();
     }
 
+    public MobEffect getEffect(int effectIndex) {
+        return effectPool.get(effectIndex).get();
+    }
+
 }

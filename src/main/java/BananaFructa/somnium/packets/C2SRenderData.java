@@ -30,20 +30,6 @@ public class C2SRenderData {
         contextSupplier.get().getSender().getServer().execute(new Runnable() {
             @Override
             public void run() {
-                //ModelServiceHandler.renderDataArrived(contextSupplier.get().getSender(),data);
-                /*File f = new File("./test1.jpg");
-                FileOutputStream out = null;
-                try {
-                    out = new FileOutputStream(f);
-                } catch (FileNotFoundException e) {
-                    throw new RuntimeException(e);
-                }
-                try {
-                    out.write(bytes);
-                    out.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }*/
                 // TODO: check later about CoACaller
                 Somnium.INSTANCE.universalContext.renderDataArrived(contextSupplier.get().getSender(), bytes);
 

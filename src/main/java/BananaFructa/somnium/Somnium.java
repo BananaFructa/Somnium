@@ -4,10 +4,13 @@ import BananaFructa.somnium.commands.*;
 import BananaFructa.somnium.gamelinking.GameLinkingHandler;
 import BananaFructa.somnium.gamelinking.LinkedGameDefinitions;
 import BananaFructa.somnium.mechanics.effects.ProgrammableEffectProvider;
+import BananaFructa.somnium.mechanics.projectiles.TrailParticleOptions;
 import BananaFructa.somnium.packets.PacketRegistry;
 import BananaFructa.somnium.service.ChainOfAgentsContextProcessor;
 import BananaFructa.somnium.service.OllamaServiceHandler;
 import com.mojang.logging.LogUtils;
+import com.mojang.serialization.Codec;
+import net.minecraft.core.particles.ParticleType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.DimensionDataStorage;
@@ -20,6 +23,9 @@ import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegistryObject;
 import org.slf4j.Logger;
 
 @Mod(Somnium.MODID)
@@ -41,11 +47,21 @@ public class Somnium {
         INSTANCE = this;
 
         effectProvider.register(context.getModEventBus());
+        Entities.register(context.getModEventBus());
+        PARTICLES.register(context.getModEventBus());
 
         context.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
         PacketRegistry.init();
         GameLinkingHandler.registerGameLinkerDefiner(LinkedGameDefinitions.class,null);
     }
+
+    public static final DeferredRegister<ParticleType<?>> PARTICLES = DeferredRegister.create(ForgeRegistries.PARTICLE_TYPES,MODID);
+    public static final RegistryObject<ParticleType<TrailParticleOptions>> TRAIL_PARTICLE = Somnium.PARTICLES.register("trail_particle", () -> new ParticleType<>(false, TrailParticleOptions.DESERIALIZER) {
+        @Override
+        public Codec<TrailParticleOptions> codec() {
+            return TrailParticleOptions.codec;
+        }
+    });;
 
     public void init(MinecraftServer server) {
         ollamaService = new OllamaServiceHandler(Config.ollamaServiceAddress);

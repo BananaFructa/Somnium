@@ -1,19 +1,8 @@
 package BananaFructa.somnium.packets;
 
-import BananaFructa.somnium.GuiHandler;
-import BananaFructa.somnium.Utils;
-import com.mojang.blaze3d.platform.NativeImage;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.Screenshot;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.network.NetworkEvent;
 
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.nio.charset.Charset;
 import java.util.function.Supplier;
 
 public class S2CShowMessage {
@@ -33,8 +22,6 @@ public class S2CShowMessage {
     }
 
     public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
-        Minecraft.getInstance().execute(() -> {
-            GuiHandler.scheduleMessage(text);
-        });
+        S2CShowMessageHandler.handle(this);
     }
 }

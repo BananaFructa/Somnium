@@ -44,6 +44,12 @@ public class PacketRegistry {
                 .encoder(S2CUpdateScheduleData::encode)
                 .consumerMainThread(S2CUpdateScheduleData::handle)
                 .add();
+
+        INSTANCE.messageBuilder(S2CEffectUpdate.class,4,NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(S2CEffectUpdate::new)
+                .encoder(S2CEffectUpdate::encode)
+                .consumerMainThread(S2CEffectUpdate::handle)
+                .add();
     }
 
     public static <T> void toServer(T message) {

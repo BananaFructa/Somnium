@@ -1,22 +1,42 @@
 package BananaFructa.somnium;
 
+import BananaFructa.somnium.gamelinking.objects.PotionModifiersType;
+import BananaFructa.somnium.mechanics.effects.DangerKind;
+import BananaFructa.somnium.mechanics.effects.EffectUtils;
+import BananaFructa.somnium.mechanics.effects.ValuableKind;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
 import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil;
+import net.minecraft.client.renderer.FaceInfo;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderGuiEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 import java.util.*;
 
-@Mod.EventBusSubscriber
+@Mod.EventBusSubscriber(value = Dist.CLIENT)
 public class GuiHandler {
+
+    static final Object renderLock = new Object();
 
     static float schInfoCounter = 0;
     static float onScreeMessageCounter = 0;
@@ -26,6 +46,11 @@ public class GuiHandler {
 
     static List<String> schInfo;
     static List<String> times;
+
+    static List<ValuableKind> shownValuables = new ArrayList<>();
+    static HashMap<DangerKind,Float> shownDangers = new HashMap<>();
+
+    static ResourceLocation SYMBOLS = ResourceLocation.fromNamespaceAndPath("somnium","symbols.png");
 
     @SubscribeEvent
     public static void onToolTip(ItemTooltipEvent event) {
@@ -70,8 +95,147 @@ public class GuiHandler {
                 }
             }
         }
+        synchronized (renderLock) {
+            if (!shownValuables.isEmpty()) {
+                float x = graphics.guiWidth() / 2 - (shownValuables.size()) * 7;
+                int y = graphics.guiHeight() / 2 - 20;
+                for (int i = 0; i < shownValuables.size(); i++) {
+                    graphics.pose().pushPose();
+                    graphics.pose().scale(1.5f, 1.5f, 1);
+                    graphics.blit(SYMBOLS, (int) ((x + i * 15) / 1.5f), (int) (y / 1.5f), shownValuables.get(i).ordinal() * 9, 0, 8, 8, 256, 256);
+                    graphics.pose().popPose();
+                }
+            }
+            if (!shownDangers.isEmpty()) {
+                float x = graphics.guiWidth() / 2 - (shownDangers.size()) * 7;
+                int y = graphics.guiHeight() / 2 + 9;
+                List<DangerKind> dangers = shownDangers.keySet().stream().toList();
+                for (int i = 0; i < dangers.size(); i++) {
+                    graphics.pose().pushPose();
+                    graphics.pose().scale(1.5f, 1.5f, 1);
+                    RenderSystem.setShaderColor(1,1,1,Math.max(0,1-shownDangers.get(dangers.get(i))));
+                    graphics.blit(SYMBOLS, (int) ((x + i * 15) / 1.5f), (int) (y / 1.5f), dangers.get(i).ordinal() * 9, 9, 8, 8, 256, 256);
+                    RenderSystem.setShaderColor(1,1,1,1);
+                    graphics.pose().popPose();
+                }
+            }
+        }
         if (!messages.isEmpty()) {
             renderOnScreen(graphics, messages.peek());
+        }
+    }
+
+    public static ValuableKind valuableType(Block b) {
+        for (ValuableKind kind : ValuableKind.values()) {
+            for (Block v : kind.block) if (b == v) return kind;
+        }
+        return null;
+    }
+
+    static Vec3i[] directions = new Vec3i[] {
+            new Vec3i(0,0,0),
+            new Vec3i(1,0,0),
+            new Vec3i(0,1,0),
+            new Vec3i(0,0,1),
+            new Vec3i(-1,0,0),
+            new Vec3i(0,-1,0),
+            new Vec3i(0,0,-1),
+    };
+
+    // mobs, [lava, dripstone, silverfish, tnt, tripwire, dispenser]
+
+    static HashMap<DangerKind,List<BlockPos>> dangerBlocks = new HashMap<>();
+
+    @SubscribeEvent
+    public static void onTick(TickEvent.ClientTickEvent event) {
+        if (Minecraft.getInstance().player != null) {
+            if (EffectUtils.hasEffect(Minecraft.getInstance().player, PotionModifiersType.SHOW_VALUABLES)) {
+                Player player = Minecraft.getInstance().player;
+                Vec3 look = player.getViewVector(1.0f);
+                Vec3 source = player.getEyePosition();
+                List<ValuableKind> kinds = new ArrayList<>();
+                for (int i = 1; i < 100; i++) {
+                    Vec3 pos = source.add(look.multiply(i/0.5f, i/0.5f, i/0.5f));
+                    BlockPos bpos = new BlockPos((int) pos.x, (int) pos.y, (int) pos.z);
+                    for (Vec3i dir : directions) {
+                        ValuableKind kind = valuableType(player.level().getBlockState(bpos.offset(dir)).getBlock());
+                        if (kind != null && !kinds.contains(kind)) kinds.add(kind);
+                    }
+                }
+                synchronized (renderLock) {
+                    shownValuables = kinds;
+                }
+            } else {
+                if (!shownValuables.isEmpty()) {
+                    synchronized (renderLock) {
+                        shownValuables.clear();
+                    }
+                }
+            }
+            if (EffectUtils.hasEffect(Minecraft.getInstance().player,PotionModifiersType.REVEAL_DANGERS)) {
+                Player player = Minecraft.getInstance().player;
+                Level level = player.level();
+                BlockPos pos = player.blockPosition();
+                if (Minecraft.getInstance().player.level().getGameTime() % 20 == 0) {
+                    dangerBlocks.clear();
+                    for (int x = -20;x <= 20;x++) {
+                        for (int y = -20; y <= 20;y++) {
+                            for (int z = -20;z <= 20;z++) {
+                                BlockPos bp = pos.offset(x,y,z);
+                                for (DangerKind kind : DangerKind.values()) {
+                                    Block b = level.getBlockState(bp).getBlock();
+                                    for (Block d : kind.blocks) {
+                                        if (d == b) {
+                                            // 5*sqrt(3) ~ 8.66
+                                            // Normalizes the distance
+                                            if (!dangerBlocks.containsKey(kind)) dangerBlocks.put(kind,new ArrayList<>());
+                                            dangerBlocks.get(kind).add(bp);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                HashMap<DangerKind,Float> kinds = new HashMap<>();
+                for (DangerKind kind : dangerBlocks.keySet()) {
+                    for (BlockPos bp : dangerBlocks.get(kind)) {
+                        // 5*sqrt(3) ~ 8.66
+                        // Normalizes the distance
+                        float x = bp.getX() - (float)player.getX();
+                        float y = bp.getY() - (float)player.getY();
+                        float z = bp.getZ() - (float)player.getZ();
+                        float dist = (float)Math.sqrt(x * x + y * y + z * z)/(20*1.73f);
+                        if (kinds.containsKey(kind)) {
+                            if (kinds.get(kind) > dist) kinds.put(kind,dist);
+                        } else kinds.put(kind,dist);
+                    }
+                }
+
+                AABB range = new AABB(player.position().add(-20,-20,-20),player.position().add(20,20,20));
+                for (Entity e : level.getEntities(player,range)) {
+                    for (DangerKind kind : DangerKind.values()) {
+                        for (Class<?> eType : kind.entitiesKind) {
+                            if (eType.isInstance(e)) {
+                                float dist = (float)e.position().distanceTo(player.position())/(20*1.73f);
+                                if (kinds.containsKey(kind)) {
+                                    if (kinds.get(kind) > dist) kinds.put(kind,dist);
+                                } else kinds.put(kind,dist);
+                            }
+                        }
+                    }
+                }
+                synchronized (renderLock) {
+                    shownDangers = kinds;
+                }
+            } else {
+                if (!shownDangers.isEmpty()) {
+                    synchronized (renderLock) {
+                        shownDangers.clear();
+                    }
+                }
+            }
         }
     }
 
