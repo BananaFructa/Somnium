@@ -1,6 +1,7 @@
 package BananaFructa.somnium.gamelinking;
 
 import BananaFructa.somnium.Somnium;
+import BananaFructa.somnium.gamelinking.objects.Python_Entity;
 import BananaFructa.somnium.pyinterpreter.Function2;
 import BananaFructa.somnium.pyinterpreter.JavaPythonShadower;
 import BananaFructa.somnium.pyinterpreter.ShadowedPythonCode;
@@ -26,7 +27,6 @@ import java.util.stream.Collectors;
 @Mod.EventBusSubscriber
 public class GameLinkingHandler {
 
-    public static Entity target;
     public static String currentCacheKey;
 
     private static List<LinkedFunctionInfo> linkedFunctions = new ArrayList<>();
@@ -74,7 +74,7 @@ public class GameLinkingHandler {
         }
     }
 
-    public static int getNextCustomItemId() {
+    public static long getNextCustomItemId() {
         return Somnium.INSTANCE.worldData.getNextItemId();
     }
 
@@ -83,9 +83,8 @@ public class GameLinkingHandler {
      * @param cacheKey = Unique key to cache the interpreted code for repetitive executions. Can be null for no caching.
      * @param functionName = The name of the python function to be called from the code. If null the python code will be executed normally.
      * @param code = The python code to be executed
-     * @param targetEntity = Some linked functions are relative to a certain player, if your code doesn't need that set it to null. Calls that do use it are not thread safe.
      */
-    public static Python_Object runPythonCode(String storageKey, String cacheKey, String functionName, String code, Entity targetEntity) {
+    public static Python_Object runPythonCode(String storageKey, String cacheKey, String code, String functionName, Python_Object... parameters) {
         Python_Object ret = Python_NoneType.None;
         ShadowedPythonCode interpretedCode;
         boolean hit = false;
@@ -103,14 +102,13 @@ public class GameLinkingHandler {
                 return ret;
             }
         }
-        target = targetEntity;
         try {
             if (!hit) {
                 for (LinkedFunctionInfo functionInfo : linkedFunctions) {
                     interpretedCode.linkFunction(functionInfo.name, functionInfo.function);
                 }
             }
-            if (functionName != null) ret = interpretedCode.executeFunction(functionName);
+            if (functionName != null) ret = interpretedCode.executeFunction(functionName,parameters);
             else interpretedCode.execute();
             if (cacheKey != null && !hit) cachedInterpreted.put(cacheKey,interpretedCode);
         } catch (Exception err) {
@@ -119,7 +117,6 @@ public class GameLinkingHandler {
             err.printStackTrace();
             return ret;
         }
-        target = null;
         currentCacheKey = null;
         return ret;
     }
@@ -142,7 +139,7 @@ public class GameLinkingHandler {
                 int id = tag.getInt("id");
                 String code = tag.getString("code");
                 String onUse = tag.getString(implKey);
-                GameLinkingHandler.runPythonCode("item_" + id, "item_" + id, onUse, code, (ServerPlayer) player);
+                GameLinkingHandler.runPythonCode("item_" + id, "item_" + id, code, onUse,new Python_Entity(player.getUUID()));
             }
             return true;
 

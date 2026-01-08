@@ -2,12 +2,14 @@ package BananaFructa.somnium.commands;
 
 import BananaFructa.somnium.Somnium;
 import BananaFructa.somnium.gamelinking.GameLinkingHandler;
+import BananaFructa.somnium.gamelinking.objects.Python_Entity;
 import BananaFructa.somnium.service.OllamaTask;
 import BananaFructa.somnium.service.TaskScheduler;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.util.Tuple;
 import net.minecraft.world.entity.LivingEntity;
 
 public class PromptCommand {
@@ -25,7 +27,7 @@ public class PromptCommand {
                     String code = Somnium.INSTANCE.universalContext.generateCode(prompt);
                     System.out.println(code);
                     commandContext.getSource().getServer().execute(()->{
-                        GameLinkingHandler.runPythonCode(GameLinkingHandler.globalStorageKey,null,"main",code,(LivingEntity) commandContext.getSource().getEntity());
+                        GameLinkingHandler.runPythonCode(GameLinkingHandler.globalStorageKey,null,code,"main",new Python_Entity(commandContext.getSource().getEntity().getUUID()));
                     });
                 }
 

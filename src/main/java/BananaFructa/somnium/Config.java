@@ -49,9 +49,9 @@ public class Config {
     You will have to do the best you can with the available information.
     Do not forget to register effects before you use them.
     Do not forget that creating items doesn't automatically give them to the player.
-    Wrap all code in a main function.
     When forced to compromise in how a functionality is implemented update descriptions to reflected the implemented functionality.
-    def main():
+    Wrap all code in a main function which takes in an input parameter of the entity which initialised the interaction.
+    def main(initiatorEntity):
         # All code here""";
     private static final String defaultEmbeddingModel = "snowflake-arctic-embed:110m";
     private static final int defaultPythonLoopLimit = 1000;

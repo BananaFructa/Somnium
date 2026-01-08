@@ -5,11 +5,13 @@ import BananaFructa.somnium.Config;
 import BananaFructa.somnium.EventHandler;
 import BananaFructa.somnium.Somnium;
 import BananaFructa.somnium.gamelinking.GameLinkingHandler;
+import BananaFructa.somnium.gamelinking.objects.Python_Entity;
 import BananaFructa.somnium.packets.PacketRegistry;
 import BananaFructa.somnium.packets.S2CRequestRenderData;
 import BananaFructa.somnium.packets.S2CShowMessage;
 import BananaFructa.somnium.pyinterpreter.JavaPythonShadower;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Tuple;
 
 import java.util.UUID;
 
@@ -72,7 +74,7 @@ public class ChainOfAgentsContextProcessor {
                     String code = generateCode(contextResponse);
                     Somnium.LOGGER.info("[CoA | Generated Code]: {}",code);
                     player.getServer().execute(()->{
-                        GameLinkingHandler.runPythonCode(GameLinkingHandler.globalStorageKey,null, "main",code,player);
+                        GameLinkingHandler.runPythonCode(GameLinkingHandler.globalStorageKey,null, code,"main",new Python_Entity(player.getUUID()));
                         EventHandler.playActionSounds(player);
                     });
                 } else {

@@ -29,7 +29,7 @@ public class ProgrammableItemProvider {
         ItemStack is = new ItemStack(i,quantity);
         is.getOrCreateTag();
         CompoundTag somniumItemTag = new CompoundTag();
-        somniumItemTag.putInt("id", GameLinkingHandler.getNextCustomItemId());
+        somniumItemTag.putLong("id", GameLinkingHandler.getNextCustomItemId());
         somniumItemTag.putString("code",item.pythonCode);
         somniumItemTag.putString("name",item.name);
         somniumItemTag.putString("description",item.description);

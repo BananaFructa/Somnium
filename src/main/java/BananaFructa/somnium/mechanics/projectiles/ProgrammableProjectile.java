@@ -1,6 +1,11 @@
 package BananaFructa.somnium.mechanics.projectiles;
 
 import BananaFructa.somnium.Entities;
+import BananaFructa.somnium.Somnium;
+import BananaFructa.somnium.gamelinking.GameLinkingHandler;
+import BananaFructa.somnium.gamelinking.objects.Python_Entity;
+import BananaFructa.somnium.pyinterpreter.objects.Python_NoneType;
+import BananaFructa.somnium.pyinterpreter.objects.Python_Object;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleOptions;
@@ -9,7 +14,7 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.Tuple;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -23,36 +28,51 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
-public class Pulse extends Projectile {
+public class ProgrammableProjectile extends Projectile {
 
-    ProgrammableProjectileInfo projectileInfo = null;
+    public ProgrammableProjectileInfo projectileInfo = null;
+    public long storageId; // Local storage id
 
     int lifetime;
 
-    public Pulse(EntityType<? extends Projectile> p_37248_, Level p_37249_) {
+    public ProgrammableProjectile(EntityType<? extends Projectile> p_37248_, Level p_37249_) {
         super(p_37248_, p_37249_);
+        storageId = Somnium.INSTANCE.worldData.getNextProjectileStorageId();
     }
 
     private final IntOpenHashSet ignoredEntities = new IntOpenHashSet();
 
-    public static Pulse make(Level level, LivingEntity shooter, int lifetime) {
-        Pulse pulse = new Pulse(Entities.pulseProjectile.get(), level);
-        pulse.setOwner(shooter);
-        pulse.setPos(
+    public static ProgrammableProjectile make(Level level, LivingEntity shooter, ProgrammableProjectileInfo info) {
+        ProgrammableProjectile programmableProjectile = new ProgrammableProjectile(Entities.pulseProjectile.get(), level);
+        programmableProjectile.projectileInfo = info;
+        programmableProjectile.setOwner(shooter);
+        programmableProjectile.setPos(
                 shooter.getX(),
                 shooter.getEyeY() - 0.1,
                 shooter.getZ()
         );
-        float factor = 10;
-        Vec3 look = shooter.getViewVector(1).multiply(0.1*factor,0.1*factor,0.1*factor);
-        pulse.setDeltaMovement(look);
-        pulse.lifetime = lifetime;
-        return pulse;
+        Vec3 look = shooter.getViewVector(1);
+        programmableProjectile.setDeltaMovement(look);
+        programmableProjectile.lifetime = info.lifetime;
+        return programmableProjectile;
     }
 
     @Override
     public void tick() {
         super.tick();
+
+        if (projectileInfo != null && projectileInfo.onTickFunction != null) {
+            Python_Object ret = GameLinkingHandler.runPythonCode(
+                    "projectile_" + storageId,
+                    "projectile_" + projectileInfo.projectileCacheId,
+                    projectileInfo.pythonCodeImplementation,
+                    projectileInfo.onTickFunction,
+                    new Python_Entity(this.getUUID())
+            );
+            if (ret != Python_NoneType.None) {
+
+            }
+        }
 
         Vec3 motion = this.getDeltaMovement();
         Vec3 initialPosition = position();
@@ -70,7 +90,7 @@ public class Pulse extends Projectile {
             discard();
         }
 
-        TrailParticleOptions type = new TrailParticleOptions(0, 1, 1,0.1f,0,true);
+        TrailParticleOptions type = new TrailParticleOptions(projectileInfo.R, projectileInfo.G, projectileInfo.B,0.1f,0,true);
         while (finalPosition.subtract(initialPosition).length() > 0.1) {
             initialPosition = initialPosition.add(direction);
             double x = initialPosition.x + (level().random.nextFloat() * 0.15 - 0.0525);
@@ -151,8 +171,8 @@ public class Pulse extends Projectile {
     }
 
     private void collisionSpread() {
-        TrailParticleOptions type = new TrailParticleOptions(0, 1, 1,0.05f,1,false);
-        double speed = getDeltaMovement().length()*5;
+        TrailParticleOptions type = new TrailParticleOptions(projectileInfo.R, projectileInfo.G, projectileInfo.B,0.05f,1,false);
+        double speed = getDeltaMovement().length()*2;
         for (int i = 0;i < 30;i++) {
             double x = getX() + (level().random.nextFloat() * 0.15 - 0.0525);
             double y = getY() + (level().random.nextFloat() * 0.15 - 0.0525);
@@ -180,9 +200,18 @@ public class Pulse extends Projectile {
         super.onHitEntity(result);
 
         if (!level().isClientSide) {
-            result.getEntity().hurt(
+            /*result.getEntity().hurt(
                     damageSources().thrown(this, this.getOwner()), 6.0F
-            );
+            );*/
+            if (projectileInfo != null && projectileInfo.onEntityHitFunctionName != null) {
+                Python_Object ret = GameLinkingHandler.runPythonCode(
+                        "projectile_" + storageId,
+                        "projectile_" + projectileInfo.projectileCacheId,
+                        projectileInfo.pythonCodeImplementation,
+                        projectileInfo.onEntityHitFunctionName,
+                       new Python_Entity(result.getEntity().getUUID())
+                );
+            }
             collisionSpread();
             this.discard();
         }
@@ -193,6 +222,15 @@ public class Pulse extends Projectile {
         super.onHitBlock(result);
 
         if (!level().isClientSide) {
+            if (projectileInfo != null && projectileInfo.onBlockHitFunctionName != null) {
+                Python_Object ret = GameLinkingHandler.runPythonCode(
+                        "projectile_" + storageId,
+                        "projectile_" + projectileInfo.projectileCacheId,
+                        projectileInfo.pythonCodeImplementation,
+                        projectileInfo.onBlockHitFunctionName,
+                       new Python_Entity(this.getUUID())
+                );
+            }
             collisionSpread();
             this.discard();
         }
@@ -202,12 +240,16 @@ public class Pulse extends Projectile {
     protected void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.putInt("lifetime",lifetime);
+        tag.putLong("id", storageId);
+        if (projectileInfo != null) tag.put("info",projectileInfo.write());
     }
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         lifetime = tag.getInt("lifetime");
+        storageId = tag.getLong("id");
+        projectileInfo = ProgrammableProjectileInfo.read(tag.getCompound("info"));
     }
 
     @Override

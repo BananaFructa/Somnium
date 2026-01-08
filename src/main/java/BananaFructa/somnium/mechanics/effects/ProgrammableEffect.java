@@ -3,6 +3,7 @@ package BananaFructa.somnium.mechanics.effects;
 import BananaFructa.somnium.gamelinking.GameLinkingHandler;
 import BananaFructa.somnium.gamelinking.objects.PotionModifiersType;
 import BananaFructa.somnium.gamelinking.objects.Python_EffectModifier;
+import BananaFructa.somnium.gamelinking.objects.Python_Entity;
 import BananaFructa.somnium.packets.PacketRegistry;
 import BananaFructa.somnium.packets.S2CEffectUpdate;
 import BananaFructa.somnium.pyinterpreter.objects.Python_List;
@@ -69,7 +70,7 @@ public class ProgrammableEffect extends MobEffect {
         if (pythonCodeImplementation != null && onTickFunctionName != null) {
             this.getAttributeModifiers().clear();
             effectModifiers.clear();;
-            Python_Object ret = GameLinkingHandler.runPythonCode("effect_"+id,"effect_"+id,onTickFunctionName,pythonCodeImplementation,entity);
+            Python_Object ret = GameLinkingHandler.runPythonCode("effect_"+id,"effect_"+id,pythonCodeImplementation,onTickFunctionName,new Python_Entity(entity.getUUID()));
             if (ret instanceof Python_List) {
                 Python_List list = (Python_List) ret;
                 for (int i = 0;i < list.elements.size();i++) {

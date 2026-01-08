@@ -3,6 +3,7 @@ package BananaFructa.somnium;
 import BananaFructa.somnium.mechanics.effects.ProgrammableEffect;
 import BananaFructa.somnium.mechanics.effects.ProgrammableEffectProvider;
 import BananaFructa.somnium.mechanics.items.ProgrammableItemProvider;
+import BananaFructa.somnium.mechanics.projectiles.ProgrammableProjectileProvider;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.saveddata.SavedData;
@@ -13,17 +14,29 @@ import java.util.UUID;
 
 public class SomniumWorldData extends SavedData {
 
-    private int lastItemId = 0;
+    private long lastItemId = 0;
+    private long lastProjectileStorageId = 0;
+    private long lastProjectileCacheId = 0;
     private CompoundTag localStorage = new CompoundTag();
     private HashMap<UUID,Long> interactionTimers = new HashMap<>();
 
-    public int getCurrentItemId() {
+    public long getCurrentItemId() {
         return lastItemId;
     }
 
-    public int getNextItemId() {
+    public long getNextItemId() {
         setDirty();
         return lastItemId++;
+    }
+
+    public long getNextProjectileStorageId() {
+        setDirty();
+        return lastProjectileStorageId++;
+    }
+
+    public long getNextProjectileCacheId() {
+        setDirty();
+        return lastProjectileCacheId++;
     }
 
     public boolean canInteract(ServerPlayer player) {
@@ -54,9 +67,12 @@ public class SomniumWorldData extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag tag) {
-        tag.putInt("last_item_id",lastItemId);
+        tag.putLong("last_item_id",lastItemId);
+        tag.putLong("last_projectile_storage_id", lastProjectileStorageId);
+        tag.putLong("last_projectile_cache_id", lastProjectileCacheId);
         tag.put("somnium_local_data",localStorage);
         tag.put("somnium_item_data", ProgrammableItemProvider.write());
+        tag.put("somnium_projectile_data", ProgrammableProjectileProvider.write());
 
         // Save effects
         CompoundTag effectData = new CompoundTag();
@@ -96,13 +112,22 @@ public class SomniumWorldData extends SavedData {
     public static SomniumWorldData load(CompoundTag tag) {
         SomniumWorldData data = new SomniumWorldData();
         if (tag.contains("last_item_id")) {
-            data.lastItemId = tag.getInt("last_item_id");
+            data.lastItemId = tag.getLong("last_item_id");
+        }
+        if (tag.contains("last_projectile_storage_id")) {
+            data.lastProjectileStorageId = tag.getLong("last_projectile_storage_id");
+        }
+        if (tag.contains("last_projectile_cache_id")) {
+            data.lastProjectileCacheId = tag.getLong("last_projectile_cache_id");
         }
         if (tag.contains("somnium_local_data")) {
             data.localStorage = (CompoundTag) tag.get("somnium_local_data");
         }
         if (tag.contains("somnium_item_data")) {
             ProgrammableItemProvider.read((CompoundTag) tag.get("somnium_item_data"));
+        }
+        if (tag.contains("somnium_projectile_data")) {
+            ProgrammableProjectileProvider.read((CompoundTag) tag.get("somnium_projectile_data"));
         }
         if (tag.contains("somnium_effect_data")) {
             CompoundTag effectData = (CompoundTag) tag.get("somnium_effect_data");

@@ -168,16 +168,22 @@ public class ShadowedPythonCode {
 
     boolean loopBroken = false;
 
-    public Python_Object executeFunction(String functionName) {
+    public Python_Object executeFunction(String functionName, Python_Object... params) {
         clearStack(); // In case it threw an exception previously and the stack is still there
         // Simulates as if the python code starts with
         // target_function()
         // at the beginning of the global scope and that only
 
-        scopeStack.push(new Scope(true,false));
+        FunctionDefinition def = (FunctionDefinition) groups.get(functionName);
+        List<Tuple<String, Python_Object>> parameters = new ArrayList<>();
+        for (int i = 0; i < def.parameters.size(); i++) {
+            parameters.add(new Tuple<>(def.parameters.get(i), params[i]));
+        }
+
+        scopeStack.push(new Scope(true, false));
         globalScope = scopeStack.peek();
         declareDefaults();
-        Python_Object ret = execute(functionName,new ArrayList<>(),true,false);
+        Python_Object ret = execute(functionName, parameters, true, false);
         scopeStack.pop();
         return ret;
     }
